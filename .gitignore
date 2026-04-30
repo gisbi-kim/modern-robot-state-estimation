@@ -1,0 +1,35 @@
+# LaTeX build artifacts
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.bbl
+*.blg
+
+# Build directory
+__build/
+build/
+
+# Drafts and review notes (not for public)
+__draft_*.tex
+__review_*.md
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python (in case of helper scripts)
+__pycache__/
+*.pyc
+.venv/
