@@ -45,6 +45,61 @@ VINS-Mono sliding-window 코드를 한 줄씩 ``왜 이렇게 짰는지'' 설명
 
 ---
 
+## 누가 들어야 하나 — 타겟 독자 & 난이도
+
+**한 줄 요약**: 대학원 1학년 \~ 박사 1년차 SLAM / VIO 입문자.
+학부 4학년에게는 상당히 무거운 자료, 현업 SLAM 엔지니어에게는
+``체계적 정리본''으로 적합.
+
+**체감 난이도**: ⭐⭐⭐⭐ (5점 만점)
+
+세 축으로 보는 근거:
+
+### 1. 수학 prerequisite이 꽤 셉니다
+
+2회차에서 SO(3), Exp/Log map, Right Jacobian $J_r$, BCH, Adjoint를 56장에
+걸쳐 다룹니다. 일반 학부 SLAM 강의에서는 거의 생략하거나 ``그냥 회전행렬''로
+퉁치는 부분이에요. Barfoot 책이나 Solà의 *micro Lie theory* 노트를 직접
+따라가는 깊이라, 다음에 익숙해야 따라갈 수 있습니다:
+
+- 다변수 미적분 (편미분, 연쇄 법칙)
+- 선형대수 (행렬 곱/역행렬/고유값)
+- 확률론 (가우시안 분포 곱)
+- 행렬 미분 (Jacobian, Hessian)
+
+학부 3\~4학년 수준에서는 2회차에서 이미 한 번 휘청할 수 있습니다.
+
+### 2. 이론 → 실제 오픈소스 코드 매핑이 핵심 차별점
+
+README에 명시했듯 ``OpenVINS `Propagator.cpp`, FAST-LIO2 IEKF, GTSAM
+`ImuFactor`를 한 줄씩 왜 이렇게 짰는지 설명할 수 있게'' 만드는 게 목표 —
+\*Probabilistic Robotics\* (Thrun) 같은 정통 교재보다 \*\*한 단계 위의
+실전 깊이\*\*입니다. 다음과 같은 \*\*보통 논문 구현하면서 며칠씩
+헤매야 알게 되는 함정\*\*들까지 짚어줍니다:
+
+- JPL vs Hamilton quaternion convention 차이
+- OpenVINS의 상태 순서 $[\delta\boldsymbol{\phi}, \delta\boldsymbol{p}, \delta\boldsymbol{v}, \delta\boldsymbol{b}_g, \delta\boldsymbol{b}_a]$
+- $B_k Q_d B_k^\top$의 부호 소거
+- $J_r$ 소각 근사가 실제 IMU 200 Hz에서 충분한 이유
+- ESKF의 ``Inject \& Reset'' 후 공분산 보정에서 등장하는 Reset Jacobian
+
+### 3. 후반부(7\~9회차)는 본격 연구자 수준
+
+관측가능성, FEJ (First-Estimate Jacobian), Schur complement,
+Marginalization, MSCKF의 null-space projection (QR), iSAM2, ikd-tree —
+전부 ICRA / IROS / TRO 논문 읽을 때 등장하는 개념들. **7회차 한 회에
+76장**이 들어간 건 사실상 mini-textbook입니다.
+
+### 누가 들으면 잘 맞을지
+
+|   | 누구 |
+|---|---|
+| ✅ **딱 맞는 사람** | SLAM 랩 박사과정 1년차, ESKF / VIO 처음 구현해보는 석사 후반 / 박사 초반, EKF는 알지만 manifold-based estimation을 정리하고 싶은 현업 엔지니어 |
+| ⚠️ **버거울 사람** | SO(3) Lie group을 처음 보는 학부생 — 2회차에서 별도 보강 필요 (Solà 2018 또는 Barfoot Ch.7) |
+| 😴 **너무 쉬울 사람** | 이미 OpenVINS / FAST-LIO2 코드를 읽고 수정해본 시니어 — 이 자료는 \*그 단계로 올라가는 사다리\*이지, 그 위 단계는 아닙니다 |
+
+---
+
 ## 빌드 방법
 
 ### 한 줄 (PowerShell, Windows)
