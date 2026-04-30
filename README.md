@@ -89,11 +89,11 @@ cross-references, third to fix PDF outlines (`.out` file).
 ## Course design notes
 
 - **Convention**: Hamilton quaternion $(q_w, q_x, q_y, q_z)$, right perturbation
-  $\bm{R} = \hat{\bm{R}}\,\mathrm{Exp}(\delta\bm{\phi})$, OpenVINS state order
-  $[\delta\bm{\phi}, \delta\bm{p}, \delta\bm{v}, \delta\bm{b}_g, \delta\bm{b}_a]$.
+  $\boldsymbol{R} = \hat{\boldsymbol{R}}\\,\mathrm{Exp}(\delta\boldsymbol{\phi})$, OpenVINS state order
+  $[\delta\boldsymbol{\phi},\\ \delta\boldsymbol{p},\\ \delta\boldsymbol{v},\\ \delta\boldsymbol{b}_g,\\ \delta\boldsymbol{b}_a]$.
 - **OpenVINS uses JPL convention $(q_x, q_y, q_z, q_w)$** — the difference
   is flagged at first appearance.
-- **Noise sign convention**: $\bm{\omega}_m = \bm{\omega} + \bm{b}_g + \bm{n}_g$
+- **Noise sign convention**: $\boldsymbol{\omega}_m = \boldsymbol{\omega} + \boldsymbol{b}_g + \boldsymbol{n}_g$
   (additive). $B_k$ has explicit minus signs as a result; covariance
   propagation is unaffected.
 
