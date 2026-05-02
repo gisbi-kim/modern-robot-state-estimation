@@ -3,6 +3,9 @@
 **ESKF**(Error-State Kalman Filter)를 중심으로 현대 로봇 state estimation을
 처음부터 끝까지 다루는 **10회차 통합 Beamer 강의자료**.
 
+📖 **온라인으로 바로 보기 → [gisbi-kim.github.io/modern-robot-state-estimation](https://gisbi-kim.github.io/modern-robot-state-estimation/)**
+&nbsp;·&nbsp; [PDF 다운로드 ↓](https://github.com/gisbi-kim/modern-robot-state-estimation/raw/main/output/lecture_all_v2.pdf)
+
 > **이 코스가 도달하는 한 줄:**
 >
 > $$ \text{ESKF} \subset \text{IEKF} \equiv \text{Gauss-Newton on MAP} \subset \text{Factor Graph} $$
@@ -21,6 +24,7 @@
 - `Dockerfile` — XeLaTeX + 한국어 폰트 빌드 환경
 - `build.ps1` — PowerShell 빌드 헬퍼
 - `output/lecture_all_v2.pdf` — 사전 빌드된 PDF (약 917쪽)
+- `index.html` — pdf.js 기반 웹 뷰어 (GitHub Pages 호스팅용)
 
 ---
 
@@ -97,6 +101,17 @@ Marginalization, MSCKF의 null-space projection (QR), iSAM2, ikd-tree —
 | ✅ **딱 맞는 사람** | SLAM 랩 박사과정 1년차, ESKF / VIO 처음 구현해보는 석사 후반 / 박사 초반, EKF는 알지만 manifold-based estimation을 정리하고 싶은 현업 엔지니어 |
 | ⚠️ **버거울 사람** | SO(3) Lie group을 처음 보는 학부생 — 2회차에서 별도 보강 필요 (Solà 2018 또는 Barfoot Ch.7) |
 | 😴 **너무 쉬울 사람** | 이미 OpenVINS / FAST-LIO2 코드를 읽고 수정해본 시니어 — 이 자료는 \*그 단계로 올라가는 사다리\*이지, 그 위 단계는 아닙니다 |
+
+---
+
+## 온라인으로 보기
+
+브라우저에서 바로 열기 — **<https://gisbi-kim.github.io/modern-robot-state-estimation/>**
+
+- pdf.js 단일 PDF 뷰어, 사이드바 목차에서 회차 클릭 → 해당 페이지로 즉시 점프
+- 917쪽이라 lazy 렌더링 (스크롤 영역만 그림)
+- 텍스트 선택 / 브라우저 검색(Ctrl+F) 가능
+- 사이드바 우상단 다운로드 버튼으로 원본 PDF 받기
 
 ---
 

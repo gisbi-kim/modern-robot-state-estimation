@@ -130,13 +130,38 @@
       color: #555;
     }
     #toolbar strong { color: #222; font-size: .85rem; }
-    #toolbar .pages { margin-left: auto; opacity: .65; font-variant-numeric: tabular-nums; }
+    #toolbar .pages { opacity: .65; font-variant-numeric: tabular-nums; }
+    #toolbar .spacer { margin-left: auto; }
+    #toolbar button {
+      background: #f4f6f9;
+      border: 1px solid #d6dbe1;
+      color: #333;
+      padding: .32rem .75rem;
+      border-radius: 4px;
+      font-size: .75rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .12s, border-color .12s;
+    }
+    #toolbar button:hover { background: #e8ecf1; border-color: #b9c1cb; }
+    #toolbar .hint {
+      font-size: .7rem;
+      opacity: .5;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
 
     #viewer {
       max-width: 1040px;
       margin: 1.6rem auto 3rem;
       padding: 0 1.2rem;
     }
+    #viewer.two-up {
+      max-width: 1700px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .6rem;
+    }
+    #viewer.two-up .page-wrap { margin-bottom: 0; }
 
     .page-wrap {
       position: relative;
@@ -251,6 +276,9 @@
   <div id="toolbar" style="display:none">
     <strong id="toolbar-title">Modern Robot State Estimation</strong>
     <span class="pages" id="toolbar-pages"></span>
+    <span class="spacer"></span>
+    <span class="hint">↑/↓ 페이지 이동</span>
+    <button id="layout-toggle" type="button">2쪽 보기</button>
   </div>
 
   <div id="status">
@@ -298,6 +326,13 @@
   let renderInFlight = new Map(); // pageIdx → promise
   const renderedPages = new Set();
 
+  let aspectRatio   = 9 / 16;     // height per width — captured from page 1
+  let layout        = 'one-up';   // 'one-up' | 'two-up'
+  let renderGen     = 0;          // bumps on layout change → in-flight renders abort
+  let currentPageIdx = 0;         // topmost visible page (for keyboard nav)
+  let pageIO        = null;
+  let sectionIO     = null;
+
   async function init() {
     const url = await resolvePdfUrl();
     pdf = await getDocument(url).promise;
@@ -314,8 +349,8 @@
 
     const firstPage = await pdf.getPage(1);
     const vp0 = firstPage.getViewport({ scale: 1 });
-    const aspect = vp0.height / vp0.width; // height per width
-    const placeholderH = Math.round(cssW * aspect);
+    aspectRatio = vp0.height / vp0.width;
+    const placeholderH = Math.round(cssW * aspectRatio);
 
     // sidebar
     await buildOutline();
@@ -338,6 +373,8 @@
 
     setupLazyRender();
     setupActiveSectionTracking();
+    setupKeyboardNav();
+    setupLayoutToggle();
   }
 
   /* ─── Outline (TOC) ─── */
@@ -382,6 +419,30 @@
     await flattenOutline(outline, 0, flat);
 
     tocLabel.textContent = '목차';
+
+    // 사이드바 맨 위: "처음으로" (표지 페이지로 점프, active 추적 대상 아님)
+    {
+      const div = document.createElement('div');
+      div.className = 'nav-item';
+      div.style.paddingLeft = '1.1rem';
+      div.dataset.page = 0;
+
+      const label = document.createElement('span');
+      label.textContent = '처음으로';
+      div.appendChild(label);
+
+      const pg = document.createElement('span');
+      pg.className = 'pg';
+      pg.textContent = 'p.1';
+      div.appendChild(pg);
+
+      div.addEventListener('click', () => {
+        setActive(div);
+        jumpToPage(0);
+      });
+      tocEl.appendChild(div);
+    }
+
     flat.forEach(({ title, pageIdx, depth }) => {
       const div = document.createElement('div');
       div.className = 'nav-item';
@@ -451,13 +512,15 @@
   function jumpToPage(idx) {
     const el = pageEls[idx];
     if (!el) return;
+    currentPageIdx = idx;
     el.scrollIntoView({ block: 'start' });
   }
 
   /* ─── Lazy rendering ─── */
 
   function setupLazyRender() {
-    const io = new IntersectionObserver((entries) => {
+    if (pageIO) pageIO.disconnect();
+    pageIO = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const idx = parseInt(entry.target.dataset.page, 10) - 1;
@@ -466,9 +529,9 @@
       });
     }, {
       root: main,
-      rootMargin: '600px 0px 600px 0px', // pre-render ~half a viewport ahead/behind
+      rootMargin: '600px 0px 600px 0px',
     });
-    pageEls.forEach(el => io.observe(el));
+    pageEls.forEach(el => pageIO.observe(el));
   }
 
   async function renderPage(idx) {
@@ -476,8 +539,12 @@
     if (renderInFlight.has(idx)) return renderInFlight.get(idx);
 
     const wrap = pageEls[idx];
+    const myGen = renderGen;
+
     const promise = (async () => {
       const page = await pdf.getPage(idx + 1);
+      if (myGen !== renderGen) return;
+
       const DPR  = Math.min(window.devicePixelRatio || 1, 2);
       const cssW = wrap.getBoundingClientRect().width;
       const vp0  = page.getViewport({ scale: 1 });
@@ -490,6 +557,15 @@
       canvas.width  = vp.width;
       canvas.height = vp.height;
 
+      const renderTask = page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
+      try {
+        await renderTask.promise;
+      } catch (e) {
+        if (e && e.name === 'RenderingCancelledException') return;
+        throw e;
+      }
+      if (myGen !== renderGen) return;
+
       const textLayerDiv = document.createElement('div');
       textLayerDiv.className = 'textLayer';
       textLayerDiv.style.width  = vpCSS.width  + 'px';
@@ -499,15 +575,12 @@
       num.className = 'page-num';
       num.textContent = `${idx + 1} / ${pdf.numPages}`;
 
-      // swap placeholder content
       wrap.innerHTML = '';
       wrap.classList.remove('placeholder');
       wrap.style.height = ''; // let canvas govern height
       wrap.appendChild(canvas);
       wrap.appendChild(textLayerDiv);
       wrap.appendChild(num);
-
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
 
       if (typeof renderTextLayer === 'function') {
         renderTextLayer({
@@ -527,14 +600,17 @@
   /* ─── Active section tracking based on scroll ─── */
 
   function setupActiveSectionTracking() {
-    if (!sectionStartPages.length) return;
-    const io = new IntersectionObserver((entries) => {
+    if (sectionIO) sectionIO.disconnect();
+    sectionIO = new IntersectionObserver((entries) => {
       // pick the topmost visible page as "current"
       const visible = entries.filter(e => e.isIntersecting)
                              .map(e => parseInt(e.target.dataset.page, 10) - 1)
                              .sort((a, b) => a - b);
       if (!visible.length) return;
       const cur = visible[0];
+      currentPageIdx = cur;
+
+      if (!sectionStartPages.length) return;
       // find largest sectionStartPages.page <= cur
       let active = sectionStartPages[0];
       for (const s of sectionStartPages) {
@@ -545,9 +621,67 @@
       }
     }, {
       root: main,
-      rootMargin: '-10% 0px -80% 0px', // mark section based on near-top page
+      rootMargin: '-10% 0px -80% 0px',
     });
-    pageEls.forEach(el => io.observe(el));
+    pageEls.forEach(el => sectionIO.observe(el));
+  }
+
+  /* ─── Keyboard navigation ─── */
+
+  function setupKeyboardNav() {
+    document.addEventListener('keydown', (e) => {
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return; // don't shadow browser shortcuts
+
+      let delta = 0;
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') delta = 1;
+      else if (e.key === 'ArrowUp' || e.key === 'PageUp') delta = -1;
+      else if (e.key === 'Home') { e.preventDefault(); jumpToPage(0); return; }
+      else if (e.key === 'End')  { e.preventDefault(); jumpToPage(pdf.numPages - 1); return; }
+      else return;
+
+      e.preventDefault();
+      const step = layout === 'two-up' ? 2 : 1;
+      const next = Math.max(0, Math.min(pdf.numPages - 1, currentPageIdx + delta * step));
+      jumpToPage(next);
+    });
+  }
+
+  /* ─── Layout toggle (1쪽 ↔ 2쪽) ─── */
+
+  function setupLayoutToggle() {
+    const btn = document.getElementById('layout-toggle');
+    btn.addEventListener('click', () => toggleLayout(btn));
+  }
+
+  function toggleLayout(btn) {
+    layout = layout === 'one-up' ? 'two-up' : 'one-up';
+    viewer.classList.toggle('two-up', layout === 'two-up');
+    btn.textContent = layout === 'two-up' ? '1쪽 보기' : '2쪽 보기';
+
+    // bump generation: in-flight renders will discard their result
+    renderGen++;
+
+    // wait one frame for the grid layout to settle, then re-measure & reset
+    requestAnimationFrame(() => {
+      const cssW = pageEls[0].getBoundingClientRect().width;
+      const placeholderH = Math.round(cssW * aspectRatio);
+
+      pageEls.forEach((wrap) => {
+        wrap.innerHTML = '';
+        wrap.classList.add('placeholder');
+        wrap.style.height = placeholderH + 'px';
+      });
+      renderedPages.clear();
+
+      // re-create observers (DOM heights changed)
+      setupLazyRender();
+      setupActiveSectionTracking();
+
+      // re-jump to current page so the user sees roughly the same content
+      jumpToPage(currentPageIdx);
+    });
   }
 
   /* ─── Boot ─── */
