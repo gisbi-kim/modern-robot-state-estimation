@@ -150,6 +150,29 @@
       opacity: .5;
       font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
     }
+    #toolbar .zoom-group {
+      display: flex;
+      align-items: center;
+      gap: .2rem;
+    }
+    #toolbar button.zoom-btn {
+      padding: .22rem .55rem;
+      font-size: .9rem;
+      line-height: 1;
+      min-width: 1.8rem;
+    }
+    #toolbar .zoom-label {
+      min-width: 3.2rem;
+      text-align: center;
+      font-size: .75rem;
+      font-variant-numeric: tabular-nums;
+      color: #555;
+      cursor: pointer;
+      user-select: none;
+      padding: .2rem .3rem;
+      border-radius: 3px;
+    }
+    #toolbar .zoom-label:hover { background: #f4f6f9; color: #222; }
 
     #viewer {
       max-width: 1040px;
@@ -278,7 +301,12 @@
     <strong id="toolbar-title">Modern Robot State Estimation</strong>
     <span class="pages" id="toolbar-pages"></span>
     <span class="spacer"></span>
-    <span class="hint">↑/↓ 페이지 이동</span>
+    <span class="hint">↑/↓ 이동 · Ctrl+휠 확대</span>
+    <span class="zoom-group">
+      <button class="zoom-btn" id="zoom-out" type="button" title="축소 (Ctrl+−)">−</button>
+      <span class="zoom-label" id="zoom-label" title="100%로 리셋 (Ctrl+0)">100%</span>
+      <button class="zoom-btn" id="zoom-in" type="button" title="확대 (Ctrl+=)">+</button>
+    </span>
     <button id="layout-toggle" type="button">2쪽 보기</button>
   </div>
 
@@ -333,6 +361,10 @@
   let currentPageIdx = 0;         // topmost visible page (for keyboard nav)
   let pageIO        = null;
   let sectionIO     = null;
+  let zoomLevel     = 1.0;        // 0.5 ~ 2.0
+  let zoomDebounceTimer = null;
+  const ZOOM_MIN = 0.5, ZOOM_MAX = 2.0, ZOOM_STEP = 0.1;
+  const BASE_W_ONE_UP = 1040, BASE_W_TWO_UP = 1700;
 
   async function init() {
     const url = await resolvePdfUrl();
@@ -376,6 +408,7 @@
     setupActiveSectionTracking();
     setupKeyboardNav();
     setupLayoutToggle();
+    setupZoom();
   }
 
   /* ─── Outline (TOC) ─── */
@@ -633,7 +666,14 @@
     document.addEventListener('keydown', (e) => {
       const t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return; // don't shadow browser shortcuts
+
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom(zoomLevel + ZOOM_STEP); return; }
+        if (e.key === '-')                  { e.preventDefault(); setZoom(zoomLevel - ZOOM_STEP); return; }
+        if (e.key === '0')                  { e.preventDefault(); setZoom(1.0); return; }
+        return; // don't shadow other Ctrl shortcuts
+      }
+      if (e.altKey) return;
 
       let delta = 0;
       if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') delta = 1;
@@ -660,11 +700,51 @@
     layout = layout === 'one-up' ? 'two-up' : 'one-up';
     viewer.classList.toggle('two-up', layout === 'two-up');
     btn.textContent = layout === 'two-up' ? '1쪽 보기' : '2쪽 보기';
+    applyViewerWidth();
+    relayout();
+  }
 
-    // bump generation: in-flight renders will discard their result
+  /* ─── Zoom ─── */
+
+  function setupZoom() {
+    document.getElementById('zoom-in').addEventListener('click',
+      () => setZoom(zoomLevel + ZOOM_STEP));
+    document.getElementById('zoom-out').addEventListener('click',
+      () => setZoom(zoomLevel - ZOOM_STEP));
+    document.getElementById('zoom-label').addEventListener('click',
+      () => setZoom(1.0));
+
+    // Ctrl/Cmd + wheel
+    main.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const dir = e.deltaY < 0 ? 1 : -1;
+      setZoom(zoomLevel + dir * ZOOM_STEP);
+    }, { passive: false });
+
+    applyViewerWidth(); // ensure inline max-width matches initial zoom
+  }
+
+  function applyViewerWidth() {
+    const baseW = layout === 'two-up' ? BASE_W_TWO_UP : BASE_W_ONE_UP;
+    viewer.style.maxWidth = (baseW * zoomLevel) + 'px';
+  }
+
+  function setZoom(z) {
+    const clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(z * 100) / 100));
+    if (Math.abs(clamped - zoomLevel) < 0.001) return;
+    zoomLevel = clamped;
+    document.getElementById('zoom-label').textContent = Math.round(zoomLevel * 100) + '%';
+    applyViewerWidth();
+    // debounce the heavy relayout — wheel fires fast
+    clearTimeout(zoomDebounceTimer);
+    zoomDebounceTimer = setTimeout(() => relayout(), 150);
+  }
+
+  /* ─── Shared relayout (used by toggle + zoom) ─── */
+
+  function relayout() {
     renderGen++;
-
-    // wait one frame for the grid layout to settle, then re-measure & reset
     requestAnimationFrame(() => {
       const cssW = pageEls[0].getBoundingClientRect().width;
       const placeholderH = Math.round(cssW * aspectRatio);
@@ -676,11 +756,8 @@
       });
       renderedPages.clear();
 
-      // re-create observers (DOM heights changed)
       setupLazyRender();
       setupActiveSectionTracking();
-
-      // re-jump to current page so the user sees roughly the same content
       jumpToPage(currentPageIdx);
     });
   }
