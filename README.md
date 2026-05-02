@@ -23,7 +23,7 @@
 - `preamble.tex` — Beamer + metropolis + 한국어 폰트(Noto CJK KR) preamble
 - `Dockerfile` — XeLaTeX + 한국어 폰트 빌드 환경
 - `build.ps1` — PowerShell 빌드 헬퍼
-- `output/lecture_all_v2.pdf` — 사전 빌드된 PDF (약 917쪽)
+- `output/lecture_all_v2.pdf` — 사전 빌드된 PDF (약 920쪽)
 - `index.html` — pdf.js 기반 웹 뷰어 (GitHub Pages 호스팅용)
 
 ---
@@ -34,7 +34,7 @@
 |---|---|---|
 | 0 | 2025 필드 지형도 (filter / smoother 생태계) | 9 |
 | 1 | Bayes filter, Gaussian | 30 |
-| 2 | SO(3) 입문 + Jacobians ($J_r$, BCH, Adjoint) | 56 |
+| 2 | SO(3) 입문 + Jacobians ($J_r$, BCH, Adjoint) | 57 |
 | 3 | 선형 Kalman Filter (5줄 유도, Joseph form) | 34 |
 | 4 | **ESKF 핵심** (15D 오차 상태, F 행렬, Inject & Reset) | 22 |
 | 5 | IMU 물리 + ESKF Predict + Preintegration (Forster 2017) | 57 |

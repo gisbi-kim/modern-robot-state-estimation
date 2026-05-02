@@ -1265,6 +1265,34 @@ for k in range(1, 101):
   \end{alertblock}
 \end{frame}
 
+% ---------- 11b: motivation for the rotation Jacobian
+\begin{frame}{왜 $\partial(\bm{R}\bm{v})/\partial\dphivec$ 가 필요한가? --- 동기}
+  ESKF가 추정하는 것은 \textbf{error state $\dphivec$}.
+  그런데 측정/운동 모델에서 회전은 항상
+  \textbf{``$\bm{R}$이 어떤 벡터 $\bm{v}$에 곱해지는''} 형태로 등장한다.
+  \vspace{0.3em}
+  \begin{itemize}
+    \item 가속도계 모델: $\bm{a}_w = \bm{R}\,\bm{a}_b + \bm{g}$
+    \item 자기장 모델:   $\bm{m}_w = \bm{R}\,\bm{m}_b$
+    \item LiDAR 점 변환: $\bm{p}_w = \bm{R}\,\bm{p}_b + \bm{t}$
+  \end{itemize}
+  \pause
+  \vspace{0.3em}
+  따라서 ESKF의 \textbf{F matrix}(상태 전이)와
+  \textbf{H matrix}(측정 Jacobian)를 유도하려면
+  \emph{반드시} 다음 미분이 필요하다:
+  \[
+    \frac{\partial\,(\bm{R}\bm{v})}{\partial\,\dphivec}
+    \quad\text{(``회전이 $\dphivec$만큼 흔들리면 $\bm{R}\bm{v}$는 얼마나 변하나?'')}
+  \]
+  \pause
+  \begin{alertblock}{한 줄 정리}
+    ESKF에서 회전이 들어간 \emph{모든} Jacobian은 이 한 미분으로 환원된다.\\
+    그래서 다음 슬라이드에서 그 결과 $-\hatR\skewx{\bm{v}}$ 를
+    \emph{재료}처럼 미리 깔아둔다.
+  \end{alertblock}
+\end{frame}
+
 % ---------- 12
 \begin{frame}{섭동의 Jacobian — ESKF에서 쓰이는 미분}
   $\dphivec = 0$ 근방에서 $\bm{R}(\dphivec) = \hatR\,\Exp(\dphivec)$의 Jacobian:

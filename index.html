@@ -33,6 +33,13 @@
       flex-direction: column;
       flex-shrink: 0;
       overflow-y: auto;
+      transition: transform .22s ease, margin-left .22s ease, opacity .15s;
+    }
+    nav.collapsed {
+      transform: translateX(-100%);
+      margin-left: calc(-1 * var(--sidebar));
+      opacity: 0;
+      pointer-events: none;
     }
 
     .nav-header {
@@ -145,6 +152,16 @@
       transition: background .12s, border-color .12s;
     }
     #toolbar button:hover { background: #e8ecf1; border-color: #b9c1cb; }
+    #toolbar #sidebar-toggle {
+      padding: .22rem .55rem;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    #toolbar #sidebar-toggle.active {
+      background: #1F4E79;
+      color: #fff;
+      border-color: #143a5c;
+    }
     #toolbar .hint {
       font-size: .7rem;
       opacity: .5;
@@ -173,6 +190,105 @@
       border-radius: 3px;
     }
     #toolbar .zoom-label:hover { background: #f4f6f9; color: #222; }
+
+    /* Page input + total */
+    #toolbar .pages {
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+      font-variant-numeric: tabular-nums;
+      opacity: .9;
+    }
+    #toolbar .pages .page-total {
+      font-size: .75rem;
+      color: #888;
+    }
+    #toolbar #page-input {
+      width: 4em;
+      font-size: .8rem;
+      padding: .18rem .35rem;
+      border: 1px solid #d6dbe1;
+      border-radius: 3px;
+      background: #f4f6f9;
+      color: #222;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-family: inherit;
+      -moz-appearance: textfield;
+    }
+    #toolbar #page-input::-webkit-outer-spin-button,
+    #toolbar #page-input::-webkit-inner-spin-button {
+      -webkit-appearance: none; margin: 0;
+    }
+    #toolbar #page-input:focus {
+      background: #fff;
+      border-color: #4A7FB5;
+      outline: none;
+    }
+
+    /* Search */
+    #toolbar .search-wrap { position: relative; }
+    #toolbar #search-input {
+      width: 11em;
+      font-size: .78rem;
+      padding: .22rem .55rem;
+      border: 1px solid #d6dbe1;
+      border-radius: 3px;
+      background: #f4f6f9;
+      color: #222;
+      font-family: inherit;
+      transition: width .15s, border-color .12s, background .12s;
+    }
+    #toolbar #search-input:focus {
+      background: #fff;
+      border-color: #4A7FB5;
+      outline: none;
+      width: 16em;
+    }
+    #search-results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      background: #fff;
+      border: 1px solid #d6dbe1;
+      border-radius: 4px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+      width: 30rem;
+      max-height: 60vh;
+      overflow-y: auto;
+      z-index: 20;
+      display: none;
+    }
+    #search-results.open { display: block; }
+    .search-result {
+      padding: .5rem .75rem;
+      border-bottom: 1px solid #f0f3f7;
+      cursor: pointer;
+      font-size: .78rem;
+      line-height: 1.5;
+      color: #333;
+    }
+    .search-result:last-child { border-bottom: none; }
+    .search-result:hover { background: #f4f6f9; }
+    .search-result .result-page {
+      font-weight: 600;
+      color: #1F4E79;
+      margin-right: .5rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .search-result .match {
+      background: #FFE680;
+      color: #4A3208;
+      font-weight: 700;
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+    .search-status {
+      padding: .65rem .75rem;
+      font-size: .75rem;
+      color: #888;
+      text-align: center;
+    }
 
     #viewer {
       max-width: 1040px;
@@ -690,10 +806,18 @@
 <!-- ── Main ── -->
 <main id="main">
   <div id="toolbar" style="display:none">
+    <button id="sidebar-toggle" type="button" title="사이드바 토글 (B)">☰</button>
     <strong id="toolbar-title">Modern Robot State Estimation</strong>
-    <span class="pages" id="toolbar-pages"></span>
+    <span class="pages">
+      <input id="page-input" type="number" min="1" title="페이지 번호 입력 후 Enter" />
+      <span class="page-total" id="toolbar-pages-total"></span>
+    </span>
+    <span class="search-wrap">
+      <input id="search-input" type="search" placeholder="검색… (Ctrl+F)" />
+      <div id="search-results"></div>
+    </span>
     <span class="spacer"></span>
-    <span class="hint">↑/↓ 이동 · Ctrl+휠 확대</span>
+    <span class="hint">Ctrl+F 검색 · ↑/↓ 이동 · Ctrl+휠 확대</span>
     <span class="zoom-group">
       <button class="zoom-btn" id="zoom-out" type="button" title="축소 (Ctrl+−)">−</button>
       <span class="zoom-label" id="zoom-label" title="100%로 리셋 (Ctrl+0)">100%</span>
@@ -730,14 +854,18 @@
     return PDF_CDN;
   }
 
-  const viewer    = document.getElementById('viewer');
-  const status    = document.getElementById('status');
-  const statusMsg = document.getElementById('status-msg');
-  const toolbar   = document.getElementById('toolbar');
-  const tbPages   = document.getElementById('toolbar-pages');
-  const main      = document.getElementById('main');
-  const tocEl     = document.getElementById('toc');
-  const tocLabel  = document.getElementById('toc-label');
+  const navEl         = document.querySelector('nav');
+  const viewer        = document.getElementById('viewer');
+  const status        = document.getElementById('status');
+  const statusMsg     = document.getElementById('status-msg');
+  const toolbar       = document.getElementById('toolbar');
+  const tbPagesTotal  = document.getElementById('toolbar-pages-total');
+  const main          = document.getElementById('main');
+  const tocEl         = document.getElementById('toc');
+  const tocLabel      = document.getElementById('toc-label');
+  const pageInput     = document.getElementById('page-input');
+  const searchInput   = document.getElementById('search-input');
+  const searchResults = document.getElementById('search-results');
 
   // page-wrap elements indexed by 0-based page index
   const pageEls = [];
@@ -772,6 +900,11 @@
     { cls: 'skin-aurora',    label: '오로라',   btnCls: 'skin-aurora-btn'    },
   ];
   let skinIdx = 0;
+
+  let textIndex          = null;   // [{ pageIdx, text }] — built lazily on first search
+  let indexBuildPromise  = null;
+  let searchDebounceTimer = null;
+  let urlUpdateTimer     = null;
   const ZOOM_MIN = 0.5, ZOOM_MAX = 2.0, ZOOM_STEP = 0.1;
   const BASE_W_ONE_UP = 1040, BASE_W_TWO_UP = 1700;
 
@@ -809,7 +942,9 @@
     }
 
     // toolbar
-    tbPages.textContent = `${n}페이지`;
+    tbPagesTotal.textContent = `/ ${n}`;
+    pageInput.max = n;
+    pageInput.value = 1;
     toolbar.style.display = 'flex';
     status.style.display = 'none';
 
@@ -819,6 +954,15 @@
     setupLayoutToggle();
     setupZoom();
     setupSkinToggle();
+    setupPageInput();
+    setupSearch();
+    setupSidebarToggle();
+
+    // honor ?page=N from the URL
+    const requested = parseInt(new URLSearchParams(location.search).get('page') || '', 10);
+    if (Number.isFinite(requested) && requested >= 1 && requested <= n) {
+      requestAnimationFrame(() => jumpToPage(requested - 1));
+    }
   }
 
   /* ─── Outline (TOC) ─── */
@@ -912,8 +1056,8 @@
       tocEl.appendChild(div);
     });
 
-    // 정적 추가: PDF outline에 안 잡히는 마무리 챕터 (p.903~)
-    const FINAL_PAGE_IDX = 902; // 0-based
+    // 정적 추가: PDF outline에 안 잡히는 마무리 챕터 (p.906~)
+    const FINAL_PAGE_IDX = 905; // 0-based
     if (FINAL_PAGE_IDX < pdf.numPages) {
       const div = document.createElement('div');
       div.className = 'nav-item';
@@ -958,6 +1102,7 @@
     if (!el) return;
     currentPageIdx = idx;
     el.scrollIntoView({ block: 'start' });
+    syncPageUI();
   }
 
   /* ─── Lazy rendering ─── */
@@ -1053,6 +1198,7 @@
       if (!visible.length) return;
       const cur = visible[0];
       currentPageIdx = cur;
+      syncPageUI();
 
       if (!sectionStartPages.length) return;
       // find largest sectionStartPages.page <= cur
@@ -1081,6 +1227,8 @@
         if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom(zoomLevel + ZOOM_STEP); return; }
         if (e.key === '-')                  { e.preventDefault(); setZoom(zoomLevel - ZOOM_STEP); return; }
         if (e.key === '0')                  { e.preventDefault(); setZoom(1.0); return; }
+        if (e.key === 'f' || e.key === 'F') { e.preventDefault(); searchInput.focus(); searchInput.select(); return; }
+        if (e.key === 'g' || e.key === 'G') { e.preventDefault(); pageInput.focus(); pageInput.select(); return; }
         return; // don't shadow other Ctrl shortcuts
       }
       if (e.altKey) return;
@@ -1090,6 +1238,7 @@
       else if (e.key === 'ArrowUp' || e.key === 'PageUp') delta = -1;
       else if (e.key === 'Home') { e.preventDefault(); jumpToPage(0); return; }
       else if (e.key === 'End')  { e.preventDefault(); jumpToPage(pdf.numPages - 1); return; }
+      else if (e.key === 'b' || e.key === 'B') { e.preventDefault(); toggleSidebar(); return; }
       else return;
 
       e.preventDefault();
@@ -1190,6 +1339,188 @@
       setupActiveSectionTracking();
       jumpToPage(currentPageIdx);
     });
+  }
+
+  /* ─── Sidebar toggle ─── */
+
+  function toggleSidebar(force) {
+    const willCollapse = (typeof force === 'boolean') ? force : !navEl.classList.contains('collapsed');
+    navEl.classList.toggle('collapsed', willCollapse);
+    const btn = document.getElementById('sidebar-toggle');
+    if (btn) btn.classList.toggle('active', willCollapse);
+  }
+
+  function setupSidebarToggle() {
+    const btn = document.getElementById('sidebar-toggle');
+    btn.addEventListener('click', () => toggleSidebar());
+    // auto-hide on narrow viewports (phones)
+    if (window.innerWidth < 768) toggleSidebar(true);
+  }
+
+  /* ─── Page input + URL sync ─── */
+
+  function syncPageUI() {
+    if (pageInput && document.activeElement !== pageInput) {
+      pageInput.value = currentPageIdx + 1;
+    }
+    scheduleUrlUpdate();
+  }
+
+  function scheduleUrlUpdate() {
+    clearTimeout(urlUpdateTimer);
+    urlUpdateTimer = setTimeout(() => {
+      const params = new URLSearchParams(location.search);
+      params.set('page', currentPageIdx + 1);
+      history.replaceState(null, '', '?' + params.toString());
+    }, 300);
+  }
+
+  function setupPageInput() {
+    const commit = () => {
+      const v = parseInt(pageInput.value, 10);
+      if (Number.isFinite(v) && v >= 1 && v <= pdf.numPages) {
+        jumpToPage(v - 1);
+      } else {
+        pageInput.value = currentPageIdx + 1;
+      }
+    };
+    pageInput.addEventListener('change', commit);
+    pageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { commit(); pageInput.blur(); }
+      else if (e.key === 'Escape') {
+        pageInput.value = currentPageIdx + 1;
+        pageInput.blur();
+      }
+    });
+    pageInput.addEventListener('focus', () => pageInput.select());
+  }
+
+  /* ─── Search ─── */
+
+  function buildTextIndex() {
+    if (indexBuildPromise) return indexBuildPromise;
+    indexBuildPromise = (async () => {
+      const idx = [];
+      const CHUNK = 30;
+      for (let start = 0; start < pdf.numPages; start += CHUNK) {
+        const ids = [];
+        for (let k = 0; k < CHUNK && (start + k) < pdf.numPages; k++) ids.push(start + k + 1);
+        const pages = await Promise.all(ids.map(id => pdf.getPage(id)));
+        const contents = await Promise.all(pages.map(p => p.getTextContent()));
+        contents.forEach((tc, i) => {
+          const text = tc.items.map(it => it.str).join(' ');
+          idx.push({ pageIdx: ids[i] - 1, text });
+        });
+      }
+      textIndex = idx;
+      return idx;
+    })();
+    return indexBuildPromise;
+  }
+
+  function setupSearch() {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => doSearch(searchInput.value), 200);
+    });
+    searchInput.addEventListener('focus', () => {
+      if (!textIndex && !indexBuildPromise) {
+        searchResults.innerHTML = '<div class="search-status">전체 페이지 인덱싱 중…</div>';
+        searchResults.classList.add('open');
+        buildTextIndex().then(() => {
+          if (searchInput.value.trim()) doSearch(searchInput.value);
+          else searchResults.classList.remove('open');
+        });
+      } else if (searchInput.value.trim()) {
+        doSearch(searchInput.value);
+      }
+    });
+    searchInput.addEventListener('blur', () => {
+      // delay close so result mousedown can fire first
+      setTimeout(() => searchResults.classList.remove('open'), 150);
+    });
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        searchInput.value = '';
+        searchResults.classList.remove('open');
+        searchInput.blur();
+      }
+    });
+  }
+
+  async function doSearch(rawQuery) {
+    const query = rawQuery.trim();
+    if (!query) {
+      searchResults.classList.remove('open');
+      searchResults.innerHTML = '';
+      return;
+    }
+    if (!textIndex) {
+      searchResults.innerHTML = '<div class="search-status">전체 페이지 인덱싱 중…</div>';
+      searchResults.classList.add('open');
+      await buildTextIndex();
+      // user may have changed query while waiting
+      if (searchInput.value.trim() !== query) return;
+    }
+
+    const lcQuery = query.toLowerCase();
+    const perPage = [];
+    let totalHits = 0;
+    for (const entry of textIndex) {
+      const lc = entry.text.toLowerCase();
+      const firstPos = lc.indexOf(lcQuery);
+      if (firstPos === -1) continue;
+      let hits = 0;
+      let p = firstPos;
+      while (p !== -1) { hits++; totalHits++; p = lc.indexOf(lcQuery, p + lcQuery.length); }
+      perPage.push({
+        pageIdx: entry.pageIdx,
+        hits,
+        ctx: extractContext(entry.text, firstPos, query.length),
+      });
+      if (perPage.length > 100) break;
+    }
+
+    if (!perPage.length) {
+      searchResults.innerHTML =
+        `<div class="search-status">"${escapeHtml(query)}" 결과 없음</div>`;
+      searchResults.classList.add('open');
+      return;
+    }
+
+    searchResults.innerHTML =
+      `<div class="search-status">${totalHits}개 일치 · ${perPage.length}개 페이지</div>` +
+      perPage.map(r => `
+        <div class="search-result" data-page="${r.pageIdx}">
+          <span class="result-page">p.${r.pageIdx + 1}</span>${escapeHtml(r.ctx.before)}<span class="match">${escapeHtml(r.ctx.match)}</span>${escapeHtml(r.ctx.after)}${r.hits > 1 ? ` <span style="opacity:.5">+${r.hits - 1}</span>` : ''}
+        </div>`).join('');
+    searchResults.classList.add('open');
+
+    searchResults.querySelectorAll('.search-result').forEach(el => {
+      el.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // keep input focus so blur logic doesn't race
+        const idx = parseInt(el.dataset.page, 10);
+        jumpToPage(idx);
+        searchResults.classList.remove('open');
+      });
+    });
+  }
+
+  function extractContext(text, pos, len) {
+    const before = Math.max(0, pos - 30);
+    const after  = Math.min(text.length, pos + len + 40);
+    const prefix = before > 0 ? '…' : '';
+    const suffix = after < text.length ? '…' : '';
+    return {
+      before: prefix + text.slice(before, pos),
+      match:  text.slice(pos, pos + len),
+      after:  text.slice(pos + len, after) + suffix,
+    };
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   }
 
   /* ─── Boot ─── */
