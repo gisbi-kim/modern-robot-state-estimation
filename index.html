@@ -273,6 +273,398 @@
       border-radius: 2px;
       transition: width .15s;
     }
+
+    /* ── Skins ── */
+    /* Gold (금장) — adds an ornate frame around each page without
+       cropping the slide. Painted via ::after at z-index: -1 inside
+       an isolated stacking context, so it sits outside the page box. */
+    #viewer.skin-gold .page-wrap {
+      position: relative;
+      isolation: isolate;
+      overflow: visible; /* let ::after frame paint outside the page box */
+      box-shadow: none;
+      border-radius: 3px;
+      margin-bottom: 28px;
+    }
+    #viewer.skin-gold.two-up { gap: 28px; }
+    #viewer.skin-gold .page-wrap:last-child { margin-bottom: 0; }
+    @keyframes goldShimmer {
+      0%   { background-position:   0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+    #viewer.skin-gold .page-wrap::after {
+      content: '';
+      position: absolute;
+      inset: -11px;
+      z-index: -1;
+      pointer-events: none;
+      border-radius: 7px;
+      background: linear-gradient(110deg,
+        #826410   0%,
+        #B8860B   8%,
+        #D4AF37  16%,
+        #E6BE44  22%,
+        #FFD700  28%,
+        #FFFFEE  32%,   /* highlight peak 1 */
+        #FFD700  36%,
+        #E6BE44  44%,
+        #D4AF37  50%,   /* mid stays luminous gold (no brown trough) */
+        #E6BE44  56%,
+        #FFD700  64%,
+        #FFFFEE  68%,   /* highlight peak 2 */
+        #FFD700  72%,
+        #E6BE44  78%,
+        #D4AF37  84%,
+        #B8860B  92%,
+        #826410 100%);
+      background-size: 200% 100%;
+      background-position: 0% 50%;
+      animation: goldShimmer 5s linear infinite;
+      box-shadow:
+        0 8px 28px rgba(212, 175, 55, 0.6),
+        inset 0 0 0 1px rgba(82, 60, 8, 0.55),
+        inset 0 0 0 10px rgba(255, 248, 180, 0.55),
+        inset 0 0 0 11px rgba(82, 60, 8, 0.55);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #viewer.skin-gold .page-wrap::after { animation: none; }
+    }
+
+    /* Neon (네온) — magenta/purple/cyan glow with hue-rotate cycling */
+    @keyframes neonShimmer {
+      0%   { background-position:   0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+    @keyframes neonHue {
+      0%   { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(360deg); }
+    }
+    #viewer.skin-neon .page-wrap {
+      position: relative;
+      isolation: isolate;
+      overflow: visible;
+      box-shadow: none;
+      border-radius: 3px;
+      margin-bottom: 36px;
+    }
+    #viewer.skin-neon.two-up { gap: 36px; }
+    #viewer.skin-neon .page-wrap:last-child { margin-bottom: 0; }
+    #viewer.skin-neon .page-wrap::after {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      z-index: -1;
+      pointer-events: none;
+      border-radius: 6px;
+      background: linear-gradient(110deg,
+        #ff00ff   0%,
+        #ff44cc  14%,
+        #cc00ff  28%,
+        #6600ff  42%,
+        #00ccff  56%,
+        #cc00ff  70%,
+        #ff44cc  84%,
+        #ff00ff 100%);
+      background-size: 200% 100%;
+      animation:
+        neonShimmer 4s linear infinite,
+        neonHue     8s linear infinite;
+      box-shadow:
+        0 0 0 2px #ffffff,
+        0 0 12px rgba(255,   0, 255, 0.9),
+        0 0 28px rgba(255,   0, 255, 0.7),
+        0 0 56px rgba(170,   0, 255, 0.5),
+        0 0 90px rgba(  0, 200, 255, 0.3);
+    }
+    #viewer.skin-neon .page-wrap.placeholder {
+      background: #f5f0ff;
+    }
+    #viewer.skin-neon .page-wrap.placeholder::before {
+      color: #aa00ff;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #viewer.skin-neon .page-wrap::after { animation: none; }
+    }
+
+    /* ── Theme-matching skins ── */
+
+    /* Blueprint (청사진) */
+    #viewer.skin-blueprint .page-wrap {
+      position: relative; isolation: isolate; overflow: visible;
+      box-shadow: none; border-radius: 3px; margin-bottom: 28px;
+    }
+    #viewer.skin-blueprint.two-up { gap: 28px; }
+    #viewer.skin-blueprint .page-wrap:last-child { margin-bottom: 0; }
+    #viewer.skin-blueprint .page-wrap::after {
+      content: ''; position: absolute; inset: -10px; z-index: -1;
+      pointer-events: none; border-radius: 5px;
+      background:
+        linear-gradient(0deg,  transparent 49%, rgba(255,255,255,0.22) 49% 51%, transparent 51%) 0 0 / 100% 14px,
+        linear-gradient(90deg, transparent 49%, rgba(255,255,255,0.22) 49% 51%, transparent 51%) 0 0 / 14px 100%,
+        linear-gradient(135deg, #143a5c, #1d4f7a, #143a5c);
+      box-shadow:
+        0 6px 22px rgba(20, 58, 92, 0.5),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    }
+    #viewer.skin-blueprint .page-wrap.placeholder {
+      background: #e6efff;
+    }
+    #viewer.skin-blueprint .page-wrap.placeholder::before { color: #1d4f7a; }
+
+    /* PCB (회로기판) */
+    #viewer.skin-pcb .page-wrap {
+      position: relative; isolation: isolate; overflow: visible;
+      box-shadow: none; border-radius: 3px; margin-bottom: 28px;
+    }
+    #viewer.skin-pcb.two-up { gap: 28px; }
+    #viewer.skin-pcb .page-wrap:last-child { margin-bottom: 0; }
+    #viewer.skin-pcb .page-wrap::after {
+      content: ''; position: absolute; inset: -10px; z-index: -1;
+      pointer-events: none; border-radius: 5px;
+      background:
+        radial-gradient(circle at 6px 6px, #d4af37 1.6px, transparent 2.2px) 0 0 / 18px 18px,
+        linear-gradient(135deg, #0a3d1f, #1a5a32 50%, #0a3d1f);
+      box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.4),
+        inset 0 0 0 1px rgba(212, 175, 55, 0.45),
+        inset 0 0 0 9px transparent,
+        inset 0 0 0 10px rgba(212, 175, 55, 0.25);
+    }
+    #viewer.skin-pcb .page-wrap.placeholder {
+      background: #d4e8d8;
+    }
+    #viewer.skin-pcb .page-wrap.placeholder::before { color: #1a5a32; }
+
+    /* Matrix (매트릭스) — green light cascading down */
+    @keyframes matrixRain {
+      0%   { background-position: 0 -50%; }
+      100% { background-position: 0 150%; }
+    }
+    #viewer.skin-matrix .page-wrap {
+      position: relative; isolation: isolate; overflow: visible;
+      box-shadow: none; border-radius: 3px; margin-bottom: 32px;
+    }
+    #viewer.skin-matrix.two-up { gap: 32px; }
+    #viewer.skin-matrix .page-wrap:last-child { margin-bottom: 0; }
+    #viewer.skin-matrix .page-wrap::after {
+      content: ''; position: absolute; inset: -9px; z-index: -1;
+      pointer-events: none; border-radius: 4px;
+      background:
+        linear-gradient(180deg,
+          transparent 0%, rgba(0,255,65,0.0) 30%,
+          rgba(0,255,65,0.7) 50%,
+          rgba(0,255,65,0.0) 70%, transparent 100%),
+        linear-gradient(180deg, #001008, #003015, #001a08);
+      background-size: 100% 200%, 100% 100%;
+      background-repeat: no-repeat, no-repeat;
+      animation: matrixRain 3.5s linear infinite;
+      box-shadow:
+        0 0 14px rgba(0, 255, 65, 0.55),
+        0 0 28px rgba(0, 200, 50, 0.3),
+        inset 0 0 0 1px rgba(0, 255, 65, 0.6);
+    }
+    #viewer.skin-matrix .page-wrap.placeholder { background: #001a08; }
+    #viewer.skin-matrix .page-wrap.placeholder::before {
+      color: #00ff41; font-family: ui-monospace, Consolas, monospace;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #viewer.skin-matrix .page-wrap::after { animation: none; }
+    }
+
+    /* ── Mood skins ── */
+
+    /* Mahogany (마호가니 우드) */
+    #viewer.skin-mahogany .page-wrap {
+      position: relative; isolation: isolate; overflow: visible;
+      box-shadow: none; border-radius: 3px; margin-bottom: 28px;
+    }
+    #viewer.skin-mahogany.two-up { gap: 28px; }
+    #viewer.skin-mahogany .page-wrap:last-child { margin-bottom: 0; }
+    #viewer.skin-mahogany .page-wrap::after {
+      content: ''; position: absolute; inset: -11px; z-index: -1;
+      pointer-events: none; border-radius: 6px;
+      background:
+        repeating-linear-gradient(180deg,
+          rgba(0,0,0,0.0) 0px, rgba(0,0,0,0.18) 2px,
+          rgba(0,0,0,0.0) 4px, rgba(0,0,0,0.10) 7px,
+          rgba(0,0,0,0.0) 11px),
+        linear-gradient(135deg, #4a2515 0%, #6b3520 30%, #8b4527 50%, #6b3520 70%, #4a2515 100%);
+      box-shadow:
+        0 8px 24px rgba(40, 18, 8, 0.55),
+        inset 0 0 0 1px rgba(20, 8, 0, 0.6),
+        inset 0 0 0 6px rgba(255, 200, 150, 0.10),
+        inset 0 0 0 7px rgba(20, 8, 0, 0.4);
+    }
+
+    /* Carbon (카본파이버) — diagonal weave */
+    #viewer.skin-carbon .page-wrap {
+      position: relative; isolation: isolate; overflow: visible;
+      box-shadow: none; border-radius: 3px; margin-bottom: 26px;
+    }
+    #viewer.skin-carbon.two-up { gap: 26px; }
+    #viewer.skin-carbon .page-wrap:last-child { margin-bottom: 0; }
+    #viewer.skin-carbon .page-wrap::after {
+      content: ''; position: absolute; inset: -8px; z-index: -1;
+      pointer-events: none; border-radius: 4px;
+      background:
+        linear-gradient(45deg,  #1a1a1a 25%, transparent 25%) 0 0 / 6px 6px,
+        linear-gradient(-45deg, #1a1a1a 25%, transparent 25%) 0 0 / 6px 6px,
+        linear-gradient(45deg,  transparent 75%, #1a1a1a 75%) 3px 3px / 6px 6px,
+        linear-gradient(-45deg, transparent 75%, #1a1a1a 75%) 3px 3px / 6px 6px,
+        #2a2a2a;
+      box-shadow:
+        0 4px 14px rgba(0, 0, 0, 0.55),
+        inset 0 0 0 1px #4a4a4a;
+    }
+
+    /* Dark (다크 모드 + 청색 미세 발광) */
+    #viewer.skin-dark .page-wrap {
+      position: relative; isolation: isolate; overflow: visible;
+      box-shadow: none; border-radius: 3px; margin-bottom: 26px;
+    }
+    #viewer.skin-dark.two-up { gap: 26px; }
+    #viewer.skin-dark .page-wrap:last-child { margin-bottom: 0; }
+    #viewer.skin-dark .page-wrap::after {
+      content: ''; position: absolute; inset: -8px; z-index: -1;
+      pointer-events: none; border-radius: 4px;
+      background: linear-gradient(135deg, #1a1a1a, #0a0a0a 50%, #1a1a1a);
+      box-shadow:
+        0 0 18px rgba(74, 144, 226, 0.35),
+        0 0 36px rgba(74, 144, 226, 0.18),
+        inset 0 0 0 1px rgba(74, 144, 226, 0.5);
+    }
+
+    /* Paper (종이 노트) */
+    #viewer.skin-paper .page-wrap {
+      position: relative; isolation: isolate; overflow: visible;
+      box-shadow: none; border-radius: 2px; margin-bottom: 28px;
+    }
+    #viewer.skin-paper.two-up { gap: 28px; }
+    #viewer.skin-paper .page-wrap:last-child { margin-bottom: 0; }
+    #viewer.skin-paper .page-wrap::after {
+      content: ''; position: absolute; inset: -10px; z-index: -1;
+      pointer-events: none; border-radius: 3px;
+      background: linear-gradient(135deg, #f5efde, #e8dcc4 50%, #f5efde);
+      box-shadow:
+        0 6px 12px rgba(80, 50, 20, 0.18),
+        0 12px 30px rgba(80, 50, 20, 0.12),
+        inset 0 0 0 1px rgba(160, 130, 90, 0.4),
+        inset 1px 1px 3px rgba(255, 255, 255, 0.45);
+    }
+
+    /* ── Playful skins ── */
+
+    /* Holographic (홀로그램) */
+    @keyframes holoShimmer {
+      0%   { background-position:   0% 50%; }
+      100% { background-position: 300% 50%; }
+    }
+    #viewer.skin-holo .page-wrap {
+      position: relative; isolation: isolate; overflow: visible;
+      box-shadow: none; border-radius: 3px; margin-bottom: 30px;
+    }
+    #viewer.skin-holo.two-up { gap: 30px; }
+    #viewer.skin-holo .page-wrap:last-child { margin-bottom: 0; }
+    #viewer.skin-holo .page-wrap::after {
+      content: ''; position: absolute; inset: -9px; z-index: -1;
+      pointer-events: none; border-radius: 5px;
+      background: linear-gradient(110deg,
+        #ff6ec4, #ff9966, #ffd166, #06d6a0, #118ab2, #7b2cbf, #ff6ec4);
+      background-size: 300% 100%;
+      animation: holoShimmer 9s linear infinite;
+      box-shadow:
+        0 0 18px rgba(255, 110, 196, 0.4),
+        0 0 36px rgba(123, 44, 191, 0.3),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #viewer.skin-holo .page-wrap::after { animation: none; }
+    }
+
+    /* Aurora (오로라) */
+    @keyframes auroraDrift {
+      0%, 100% { background-position:   0% 50%; }
+      50%      { background-position: 100% 50%; }
+    }
+    #viewer.skin-aurora .page-wrap {
+      position: relative; isolation: isolate; overflow: visible;
+      box-shadow: none; border-radius: 3px; margin-bottom: 32px;
+    }
+    #viewer.skin-aurora.two-up { gap: 32px; }
+    #viewer.skin-aurora .page-wrap:last-child { margin-bottom: 0; }
+    #viewer.skin-aurora .page-wrap::after {
+      content: ''; position: absolute; inset: -10px; z-index: -1;
+      pointer-events: none; border-radius: 5px;
+      background: linear-gradient(135deg,
+        #0fa3b1, #4cc9f0, #7209b7 50%, #4cc9f0, #0fa3b1);
+      background-size: 300% 100%;
+      animation: auroraDrift 14s ease-in-out infinite;
+      box-shadow:
+        0 0 28px rgba(76, 201, 240, 0.4),
+        0 0 56px rgba(114, 9, 183, 0.3);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #viewer.skin-aurora .page-wrap::after { animation: none; }
+    }
+
+    #viewer.skin-gold .page-wrap.placeholder {
+      background: linear-gradient(135deg, #FFFBEB, #FFF8DC, #FFFBEB);
+    }
+    #viewer.skin-gold .page-wrap.placeholder::before {
+      color: #B8860B;
+    }
+
+    #toolbar button#skin-toggle.active.skin-gold-btn {
+      background: linear-gradient(135deg, #FFE680, #D4AF37 50%, #B8860B);
+      color: #4A3208;
+      border-color: #8B6914;
+      font-weight: 600;
+      text-shadow: 0 1px 0 rgba(255, 248, 220, .6);
+    }
+    #toolbar button#skin-toggle.active.skin-neon-btn {
+      background: linear-gradient(135deg, #ff44cc, #aa00ff, #6600ff);
+      color: #fff;
+      border-color: #aa00ff;
+      font-weight: 600;
+      text-shadow: 0 0 6px rgba(255, 255, 255, .7);
+      box-shadow: 0 0 12px rgba(255, 0, 255, .55);
+    }
+    #toolbar button#skin-toggle.active.skin-blueprint-btn {
+      background: linear-gradient(135deg, #4a7ba6, #1d4f7a);
+      color: #fff; border-color: #143a5c; font-weight: 600;
+    }
+    #toolbar button#skin-toggle.active.skin-pcb-btn {
+      background: linear-gradient(135deg, #1a5a2f, #0a3d1f);
+      color: #d4af37; border-color: #062814; font-weight: 600;
+    }
+    #toolbar button#skin-toggle.active.skin-matrix-btn {
+      background: #001a08; color: #00ff41; border-color: #00ff41;
+      font-weight: 700; font-family: ui-monospace, Consolas, monospace;
+      text-shadow: 0 0 8px #00ff41;
+    }
+    #toolbar button#skin-toggle.active.skin-mahogany-btn {
+      background: linear-gradient(135deg, #6b3520, #4a2515);
+      color: #f5deb3; border-color: #2b1409; font-weight: 600;
+    }
+    #toolbar button#skin-toggle.active.skin-carbon-btn {
+      background: #1a1a1a; color: #ddd; border-color: #444; font-weight: 600;
+    }
+    #toolbar button#skin-toggle.active.skin-dark-btn {
+      background: #0a0a0a; color: #4a90e2; border-color: #4a90e2;
+      font-weight: 600; text-shadow: 0 0 6px #4a90e2;
+    }
+    #toolbar button#skin-toggle.active.skin-paper-btn {
+      background: #f5efde; color: #6b3520; border-color: #c8b48a; font-weight: 600;
+    }
+    #toolbar button#skin-toggle.active.skin-holo-btn {
+      background: linear-gradient(110deg, #ff6ec4, #ffd166, #06d6a0, #118ab2, #7b2cbf);
+      color: #fff; border-color: rgba(0,0,0,0.3); font-weight: 600;
+      text-shadow: 0 0 4px rgba(0,0,0,0.45);
+    }
+    #toolbar button#skin-toggle.active.skin-aurora-btn {
+      background: linear-gradient(135deg, #0fa3b1, #4cc9f0, #7209b7);
+      color: #fff; border-color: #0fa3b1; font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -307,6 +699,7 @@
       <span class="zoom-label" id="zoom-label" title="100%로 리셋 (Ctrl+0)">100%</span>
       <button class="zoom-btn" id="zoom-in" type="button" title="확대 (Ctrl+=)">+</button>
     </span>
+    <button id="skin-toggle" type="button" title="슬라이드 테두리 스킨">스킨</button>
     <button id="layout-toggle" type="button">2쪽 보기</button>
   </div>
 
@@ -363,6 +756,22 @@
   let sectionIO     = null;
   let zoomLevel     = 1.0;        // 0.5 ~ 2.0
   let zoomDebounceTimer = null;
+
+  const SKINS = [
+    { cls: null,             label: '스킨',     btnCls: null                 },
+    { cls: 'skin-gold',      label: '금장',     btnCls: 'skin-gold-btn'      },
+    { cls: 'skin-neon',      label: '네온',     btnCls: 'skin-neon-btn'      },
+    { cls: 'skin-blueprint', label: '청사진',   btnCls: 'skin-blueprint-btn' },
+    { cls: 'skin-pcb',       label: 'PCB',     btnCls: 'skin-pcb-btn'       },
+    { cls: 'skin-matrix',    label: '매트릭스', btnCls: 'skin-matrix-btn'    },
+    { cls: 'skin-mahogany',  label: '마호가니', btnCls: 'skin-mahogany-btn'  },
+    { cls: 'skin-carbon',    label: '카본',     btnCls: 'skin-carbon-btn'    },
+    { cls: 'skin-dark',      label: '다크',     btnCls: 'skin-dark-btn'      },
+    { cls: 'skin-paper',     label: '종이',     btnCls: 'skin-paper-btn'     },
+    { cls: 'skin-holo',      label: '홀로그램', btnCls: 'skin-holo-btn'      },
+    { cls: 'skin-aurora',    label: '오로라',   btnCls: 'skin-aurora-btn'    },
+  ];
+  let skinIdx = 0;
   const ZOOM_MIN = 0.5, ZOOM_MAX = 2.0, ZOOM_STEP = 0.1;
   const BASE_W_ONE_UP = 1040, BASE_W_TWO_UP = 1700;
 
@@ -409,6 +818,7 @@
     setupKeyboardNav();
     setupLayoutToggle();
     setupZoom();
+    setupSkinToggle();
   }
 
   /* ─── Outline (TOC) ─── */
@@ -739,6 +1149,26 @@
     // debounce the heavy relayout — wheel fires fast
     clearTimeout(zoomDebounceTimer);
     zoomDebounceTimer = setTimeout(() => relayout(), 150);
+  }
+
+  /* ─── Skins ─── */
+
+  function setupSkinToggle() {
+    const btn = document.getElementById('skin-toggle');
+    btn.textContent = SKINS[skinIdx].label; // sync initial label with current state
+    btn.addEventListener('click', () => {
+      // clear all skin classes from viewer + button
+      for (const s of SKINS) {
+        if (s.cls)    viewer.classList.remove(s.cls);
+        if (s.btnCls) btn.classList.remove(s.btnCls);
+      }
+      skinIdx = (skinIdx + 1) % SKINS.length;
+      const cur = SKINS[skinIdx];
+      if (cur.cls)    viewer.classList.add(cur.cls);
+      if (cur.btnCls) btn.classList.add(cur.btnCls);
+      btn.classList.toggle('active', skinIdx !== 0);
+      btn.textContent = cur.label;
+    });
   }
 
   /* ─── Shared relayout (used by toggle + zoom) ─── */
