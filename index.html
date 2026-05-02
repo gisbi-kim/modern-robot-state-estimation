@@ -121,7 +121,7 @@
       flex: 1;
       overflow-y: auto;
       background: var(--bg);
-      scroll-padding-top: 56px; /* clear sticky toolbar on jumps */
+      scroll-padding-top: 56px; /* clear sticky toolbar on jumps; JS bumps it on mobile */
     }
 
     #toolbar {
@@ -288,6 +288,31 @@
       font-size: .75rem;
       color: #888;
       text-align: center;
+    }
+
+    /* ── Mobile (< 768px) ── */
+    @media (max-width: 768px) {
+      #toolbar {
+        flex-wrap: wrap;
+        gap: .45rem .5rem;
+        padding: .45rem .6rem;
+        font-size: .75rem;
+      }
+      /* hide things that don't fit / aren't useful on a phone */
+      #toolbar #toolbar-title { display: none; }
+      #toolbar .hint          { display: none; }
+      #toolbar #layout-toggle { display: none; }
+      #toolbar .spacer        { display: none; }
+
+      /* compact inputs */
+      #toolbar #page-input         { width: 3.2em; }
+      #toolbar #search-input       { width: 7.5em; }
+      #toolbar #search-input:focus { width: 11em; }
+      #search-results              { width: calc(100vw - 1.2rem); }
+      #toolbar .zoom-label         { min-width: 2.6rem; }
+
+      /* tighter page padding so the slide is closer to the screen edge */
+      #viewer { padding: 0 .5rem; }
     }
 
     #viewer {
@@ -802,6 +827,15 @@
     <a href="https://github.com/gisbi-kim/modern-robot-state-estimation" target="_blank">GitHub ↗</a>
   </div>
 </nav>
+<script>
+  // Phone-width viewport: collapse the sidebar BEFORE first paint, so the
+  // document width equals the main column width and the mobile browser locks
+  // viewport scale to 1.0. Otherwise the initial paint is wide (nav + main),
+  // the browser picks a fractional zoom, and PDF pages look blurry forever.
+  if (window.innerWidth < 768) {
+    document.querySelector('nav').classList.add('collapsed');
+  }
+</script>
 
 <!-- ── Main ── -->
 <main id="main">
@@ -905,6 +939,10 @@
   let indexBuildPromise  = null;
   let searchDebounceTimer = null;
   let urlUpdateTimer     = null;
+
+  const RELAYOUT_THROTTLE_MS = 1000;
+  let relayoutLastFire    = 0;
+  let relayoutPendingTimer = null;
   const ZOOM_MIN = 0.5, ZOOM_MAX = 2.0, ZOOM_STEP = 0.1;
   const BASE_W_ONE_UP = 1040, BASE_W_TWO_UP = 1700;
 
@@ -912,6 +950,12 @@
     const url = await resolvePdfUrl();
     pdf = await getDocument(url).promise;
     const n = pdf.numPages;
+
+    // On phones: collapse sidebar BEFORE measuring page width so placeholders
+    // are sized for the wider main column the user actually sees.
+    if (window.innerWidth < 768) {
+      navEl.classList.add('collapsed');
+    }
 
     // measure first page to size all placeholders identically
     // (Beamer slides are uniform 16:9)
@@ -957,6 +1001,11 @@
     setupPageInput();
     setupSearch();
     setupSidebarToggle();
+    syncScrollPadding();
+    window.addEventListener('resize', () => {
+      syncScrollPadding();   // cheap, run every event
+      throttledRelayout();   // heavy, throttled to 1/sec
+    });
 
     // honor ?page=N from the URL
     const requested = parseInt(new URLSearchParams(location.search).get('page') || '', 10);
@@ -1134,7 +1183,10 @@
       const page = await pdf.getPage(idx + 1);
       if (myGen !== renderGen) return;
 
-      const DPR  = Math.min(window.devicePixelRatio || 1, 2);
+      // Allow DPR up to 3 so high-density phones (iPhone Pro etc.) render sharp.
+      // 4096-px canvas cap is still well within iOS Safari's limits at typical
+      // mobile widths (cssW × 3 ≈ 1080).
+      const DPR  = Math.min(window.devicePixelRatio || 1, 3);
       const cssW = wrap.getBoundingClientRect().width;
       const vp0  = page.getViewport({ scale: 1 });
       const scale    = (cssW * DPR) / vp0.width;
@@ -1341,6 +1393,28 @@
     });
   }
 
+  // Throttle relayout for resize / sidebar-toggle: leading edge fires immediately,
+  // trailing edge guarantees the final width is rendered after a drag stops.
+  function throttledRelayout() {
+    const now = Date.now();
+    const since = now - relayoutLastFire;
+
+    if (since >= RELAYOUT_THROTTLE_MS) {
+      if (relayoutPendingTimer) {
+        clearTimeout(relayoutPendingTimer);
+        relayoutPendingTimer = null;
+      }
+      relayoutLastFire = now;
+      relayout();
+    } else if (!relayoutPendingTimer) {
+      relayoutPendingTimer = setTimeout(() => {
+        relayoutPendingTimer = null;
+        relayoutLastFire = Date.now();
+        relayout();
+      }, RELAYOUT_THROTTLE_MS - since);
+    }
+  }
+
   /* ─── Sidebar toggle ─── */
 
   function toggleSidebar(force) {
@@ -1348,13 +1422,23 @@
     navEl.classList.toggle('collapsed', willCollapse);
     const btn = document.getElementById('sidebar-toggle');
     if (btn) btn.classList.toggle('active', willCollapse);
+    // main column width changed → re-render visible pages at the right resolution
+    throttledRelayout();
   }
 
   function setupSidebarToggle() {
     const btn = document.getElementById('sidebar-toggle');
     btn.addEventListener('click', () => toggleSidebar());
-    // auto-hide on narrow viewports (phones)
-    if (window.innerWidth < 768) toggleSidebar(true);
+    // sync button state with the (possibly already-collapsed) sidebar
+    btn.classList.toggle('active', navEl.classList.contains('collapsed'));
+  }
+
+  /* Toolbar wraps to multiple rows on phones — keep scroll-padding-top in sync
+     so jumps land below it, never under it. */
+  function syncScrollPadding() {
+    if (!toolbar) return;
+    const h = toolbar.offsetHeight;
+    if (h > 0) main.style.scrollPaddingTop = (h + 6) + 'px';
   }
 
   /* ─── Page input + URL sync ─── */
