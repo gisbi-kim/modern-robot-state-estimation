@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Robot State Estimation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #1F4E79;
+      --blue-lt: #4A7FB5;
+      --accent:  #D9531E;
+      --bg:      #F2F4F7;
+      --sidebar: 320px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: #222;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    nav {
+      width: var(--sidebar);
+      background: var(--blue);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .nav-header {
+      padding: 1.4rem 1.1rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+    .nav-header h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.35;
+      letter-spacing: -.01em;
+    }
+    .nav-header p {
+      margin-top: .4rem;
+      font-size: .72rem;
+      opacity: .55;
+      line-height: 1.5;
+    }
+    .nav-header .dl {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      margin-top: .7rem;
+      padding: .3rem .55rem;
+      font-size: .7rem;
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 3px;
+      transition: background .12s;
+    }
+    .nav-header .dl:hover { background: rgba(255,255,255,.18); }
+
+    .nav-section { padding: .7rem 0 .4rem; }
+    .nav-section-label {
+      padding: .3rem 1.1rem;
+      font-size: .65rem;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      opacity: .45;
+      font-weight: 600;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: flex-start;
+      gap: .55rem;
+      padding: .48rem 1.1rem;
+      font-size: .8rem;
+      line-height: 1.4;
+      opacity: .82;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background .12s, opacity .12s, border-color .12s;
+      user-select: none;
+    }
+    .nav-item:hover  { background: rgba(255,255,255,.09); opacity: 1; }
+    .nav-item.active { background: rgba(255,255,255,.13); opacity: 1; border-left-color: var(--accent); }
+    .nav-item .pg {
+      margin-left: auto;
+      font-size: .65rem;
+      opacity: .55;
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+
+    .nav-footer {
+      margin-top: auto;
+      padding: .9rem 1.1rem;
+      font-size: .68rem;
+      opacity: .45;
+      border-top: 1px solid rgba(255,255,255,.1);
+      line-height: 1.6;
+    }
+    .nav-footer a { color: #fff; }
+
+    /* ── Main area ── */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--bg);
+    }
+
+    #toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #fff;
+      border-bottom: 1px solid #dde1e7;
+      padding: .55rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: .9rem;
+      font-size: .8rem;
+      color: #555;
+    }
+    #toolbar strong { color: #222; font-size: .85rem; }
+    #toolbar .pages { margin-left: auto; opacity: .65; font-variant-numeric: tabular-nums; }
+
+    #viewer {
+      max-width: 1040px;
+      margin: 1.6rem auto 3rem;
+      padding: 0 1.2rem;
+    }
+
+    .page-wrap {
+      position: relative;
+      margin-bottom: .6rem;
+      background: #fff;
+      border-radius: 4px;
+      box-shadow: 0 2px 14px rgba(0,0,0,.13);
+      overflow: hidden;
+    }
+    .page-wrap canvas {
+      width: 100%;
+      display: block;
+      background: #fff;
+    }
+    .page-wrap.placeholder {
+      background: #e7ecf1;
+      box-shadow: none;
+    }
+    .page-wrap.placeholder::before {
+      content: attr(data-page-num);
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #b3bdc9;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    .page-num {
+      position: absolute;
+      bottom: .4rem;
+      right: .6rem;
+      font-size: .65rem;
+      background: rgba(0,0,0,.38);
+      color: #fff;
+      padding: .15rem .45rem;
+      border-radius: 3px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ── Text layer ── */
+    .textLayer {
+      position: absolute;
+      top: 0; left: 0;
+      overflow: hidden;
+      line-height: 1;
+      z-index: 1;
+    }
+    .textLayer span,
+    .textLayer br {
+      color: transparent;
+      position: absolute;
+      white-space: pre;
+      cursor: text;
+      transform-origin: 0% 0%;
+      user-select: text;
+    }
+    .textLayer ::selection      { background: rgba(0,100,255,.25); color: transparent; }
+    .textLayer ::-moz-selection { background: rgba(0,100,255,.25); color: transparent; }
+
+    #status {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 60vh;
+      color: #8a9ab0;
+      gap: .7rem;
+      font-size: .9rem;
+    }
+    #status .big { font-size: 2.5rem; }
+
+    .progress-bar {
+      width: 220px;
+      height: 3px;
+      background: #dde1e7;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width .15s;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<nav>
+  <div class="nav-header">
+    <h1>Modern Robot<br>State Estimation</h1>
+    <p>10회차 통합 강의 · ESKF / MSCKF / FAST-LIO / Factor Graphs</p>
+    <a class="dl" href="output/lecture_all_v2.pdf" download>↓ PDF 다운로드</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label" id="toc-label">목차 로딩 중…</div>
+    <div id="toc"></div>
+  </div>
+
+  <div class="nav-footer">
+    <a href="https://github.com/gisbi-kim/modern-robot-state-estimation" target="_blank">GitHub ↗</a>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main id="main">
+  <div id="toolbar" style="display:none">
+    <strong id="toolbar-title">Modern Robot State Estimation</strong>
+    <span class="pages" id="toolbar-pages"></span>
+  </div>
+
+  <div id="status">
+    <span class="big">⏳</span>
+    <span id="status-msg">PDF 로딩 중…</span>
+    <div class="progress-bar"><div class="progress-fill" id="prog" style="width:0%"></div></div>
+  </div>
+
+  <div id="viewer"></div>
+</main>
+
+<script type="module">
+  const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
+  const { getDocument, GlobalWorkerOptions } = pdfjsLib;
+  const renderTextLayer = pdfjsLib.renderTextLayer ?? pdfjsLib.default?.renderTextLayer;
+  GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+
+  const PDF_LOCAL = 'output/lecture_all_v2.pdf';
+  const PDF_CDN   = 'https://cdn.jsdelivr.net/gh/gisbi-kim/modern-robot-state-estimation@main/output/lecture_all_v2.pdf';
+
+  async function resolvePdfUrl() {
+    try {
+      const r = await fetch(PDF_LOCAL, { method: 'HEAD' });
+      if (r.ok) return PDF_LOCAL;
+    } catch {}
+    return PDF_CDN;
+  }
+
+  const viewer    = document.getElementById('viewer');
+  const status    = document.getElementById('status');
+  const statusMsg = document.getElementById('status-msg');
+  const toolbar   = document.getElementById('toolbar');
+  const tbPages   = document.getElementById('toolbar-pages');
+  const main      = document.getElementById('main');
+  const tocEl     = document.getElementById('toc');
+  const tocLabel  = document.getElementById('toc-label');
+
+  // page-wrap elements indexed by 0-based page index
+  const pageEls = [];
+  // page index → outline item DOM (for active highlighting)
+  const sectionStartPages = []; // sorted [{ page, navEl }]
+
+  let pdf;
+  let renderInFlight = new Map(); // pageIdx → promise
+  const renderedPages = new Set();
+
+  async function init() {
+    const url = await resolvePdfUrl();
+    pdf = await getDocument(url).promise;
+    const n = pdf.numPages;
+
+    // measure first page to size all placeholders identically
+    // (Beamer slides are uniform 16:9)
+    const probe = document.createElement('div');
+    probe.className = 'page-wrap';
+    probe.style.visibility = 'hidden';
+    viewer.appendChild(probe);
+    const cssW = probe.getBoundingClientRect().width;
+    viewer.removeChild(probe);
+
+    const firstPage = await pdf.getPage(1);
+    const vp0 = firstPage.getViewport({ scale: 1 });
+    const aspect = vp0.height / vp0.width; // height per width
+    const placeholderH = Math.round(cssW * aspect);
+
+    // sidebar
+    await buildOutline();
+
+    // create placeholders for every page
+    for (let i = 1; i <= n; i++) {
+      const wrap = document.createElement('div');
+      wrap.className = 'page-wrap placeholder';
+      wrap.style.height = placeholderH + 'px';
+      wrap.dataset.page = i;
+      wrap.dataset.pageNum = `${i} / ${n}`;
+      pageEls.push(wrap);
+      viewer.appendChild(wrap);
+    }
+
+    // toolbar
+    tbPages.textContent = `${n}페이지`;
+    toolbar.style.display = 'flex';
+    status.style.display = 'none';
+
+    setupLazyRender();
+    setupActiveSectionTracking();
+  }
+
+  /* ─── Outline (TOC) ─── */
+
+  async function resolveDest(dest) {
+    if (!dest) return null;
+    if (typeof dest === 'string') {
+      try { dest = await pdf.getDestination(dest); } catch { return null; }
+    }
+    if (!Array.isArray(dest) || !dest[0]) return null;
+    try {
+      const idx = await pdf.getPageIndex(dest[0]);
+      return idx; // 0-based
+    } catch { return null; }
+  }
+
+  async function flattenOutline(items, depth, out) {
+    for (const item of items || []) {
+      const pageIdx = await resolveDest(item.dest);
+      out.push({ title: item.title, pageIdx, depth });
+      if (item.items && item.items.length) {
+        await flattenOutline(item.items, depth + 1, out);
+      }
+    }
+  }
+
+  async function buildOutline() {
+    let outline = null;
+    try { outline = await pdf.getOutline(); } catch {}
+
+    if (!outline || outline.length === 0) {
+      tocLabel.textContent = '전체 PDF';
+      const div = document.createElement('div');
+      div.className = 'nav-item active';
+      div.textContent = '처음으로';
+      div.addEventListener('click', () => jumpToPage(0));
+      tocEl.appendChild(div);
+      return;
+    }
+
+    const flat = [];
+    await flattenOutline(outline, 0, flat);
+
+    tocLabel.textContent = '목차';
+    flat.forEach(({ title, pageIdx, depth }) => {
+      const div = document.createElement('div');
+      div.className = 'nav-item';
+      div.style.paddingLeft = (1.1 + depth * 0.85) + 'rem';
+      div.dataset.page = pageIdx ?? '';
+
+      const label = document.createElement('span');
+      label.textContent = title;
+      div.appendChild(label);
+
+      if (pageIdx != null) {
+        const pg = document.createElement('span');
+        pg.className = 'pg';
+        pg.textContent = `p.${pageIdx + 1}`;
+        div.appendChild(pg);
+
+        div.addEventListener('click', () => {
+          setActive(div);
+          jumpToPage(pageIdx);
+        });
+        sectionStartPages.push({ page: pageIdx, navEl: div });
+      }
+      tocEl.appendChild(div);
+    });
+
+    // 정적 추가: PDF outline에 안 잡히는 마무리 챕터 (p.903~)
+    const FINAL_PAGE_IDX = 902; // 0-based
+    if (FINAL_PAGE_IDX < pdf.numPages) {
+      const div = document.createElement('div');
+      div.className = 'nav-item';
+      div.style.paddingLeft = '1.1rem';
+      div.dataset.page = FINAL_PAGE_IDX;
+
+      const label = document.createElement('span');
+      label.textContent = '마무리';
+      div.appendChild(label);
+
+      const pg = document.createElement('span');
+      pg.className = 'pg';
+      pg.textContent = `p.${FINAL_PAGE_IDX + 1}`;
+      div.appendChild(pg);
+
+      div.addEventListener('click', () => {
+        setActive(div);
+        jumpToPage(FINAL_PAGE_IDX);
+      });
+      sectionStartPages.push({ page: FINAL_PAGE_IDX, navEl: div });
+      tocEl.appendChild(div);
+    }
+
+    sectionStartPages.sort((a, b) => a.page - b.page);
+    if (sectionStartPages[0]) setActive(sectionStartPages[0].navEl);
+  }
+
+  function setActive(el) {
+    tocEl.querySelectorAll('.nav-item.active').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    // keep active item visible in sidebar
+    const navEl = document.querySelector('nav');
+    const r = el.getBoundingClientRect();
+    const nr = navEl.getBoundingClientRect();
+    if (r.top < nr.top || r.bottom > nr.bottom) {
+      el.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function jumpToPage(idx) {
+    const el = pageEls[idx];
+    if (!el) return;
+    el.scrollIntoView({ block: 'start' });
+  }
+
+  /* ─── Lazy rendering ─── */
+
+  function setupLazyRender() {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const idx = parseInt(entry.target.dataset.page, 10) - 1;
+          renderPage(idx);
+        }
+      });
+    }, {
+      root: main,
+      rootMargin: '600px 0px 600px 0px', // pre-render ~half a viewport ahead/behind
+    });
+    pageEls.forEach(el => io.observe(el));
+  }
+
+  async function renderPage(idx) {
+    if (renderedPages.has(idx)) return;
+    if (renderInFlight.has(idx)) return renderInFlight.get(idx);
+
+    const wrap = pageEls[idx];
+    const promise = (async () => {
+      const page = await pdf.getPage(idx + 1);
+      const DPR  = Math.min(window.devicePixelRatio || 1, 2);
+      const cssW = wrap.getBoundingClientRect().width;
+      const vp0  = page.getViewport({ scale: 1 });
+      const scale    = (cssW * DPR) / vp0.width;
+      const vp       = page.getViewport({ scale });
+      const cssScale = cssW / vp0.width;
+      const vpCSS    = page.getViewport({ scale: cssScale });
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = vp.width;
+      canvas.height = vp.height;
+
+      const textLayerDiv = document.createElement('div');
+      textLayerDiv.className = 'textLayer';
+      textLayerDiv.style.width  = vpCSS.width  + 'px';
+      textLayerDiv.style.height = vpCSS.height + 'px';
+
+      const num = document.createElement('div');
+      num.className = 'page-num';
+      num.textContent = `${idx + 1} / ${pdf.numPages}`;
+
+      // swap placeholder content
+      wrap.innerHTML = '';
+      wrap.classList.remove('placeholder');
+      wrap.style.height = ''; // let canvas govern height
+      wrap.appendChild(canvas);
+      wrap.appendChild(textLayerDiv);
+      wrap.appendChild(num);
+
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+
+      if (typeof renderTextLayer === 'function') {
+        renderTextLayer({
+          textContentSource: page.streamTextContent(),
+          container: textLayerDiv,
+          viewport: vpCSS,
+        });
+      }
+      renderedPages.add(idx);
+    })().catch(err => console.error('render fail p' + (idx+1), err));
+
+    renderInFlight.set(idx, promise);
+    promise.finally(() => renderInFlight.delete(idx));
+    return promise;
+  }
+
+  /* ─── Active section tracking based on scroll ─── */
+
+  function setupActiveSectionTracking() {
+    if (!sectionStartPages.length) return;
+    const io = new IntersectionObserver((entries) => {
+      // pick the topmost visible page as "current"
+      const visible = entries.filter(e => e.isIntersecting)
+                             .map(e => parseInt(e.target.dataset.page, 10) - 1)
+                             .sort((a, b) => a - b);
+      if (!visible.length) return;
+      const cur = visible[0];
+      // find largest sectionStartPages.page <= cur
+      let active = sectionStartPages[0];
+      for (const s of sectionStartPages) {
+        if (s.page <= cur) active = s; else break;
+      }
+      if (active && !active.navEl.classList.contains('active')) {
+        setActive(active.navEl);
+      }
+    }, {
+      root: main,
+      rootMargin: '-10% 0px -80% 0px', // mark section based on near-top page
+    });
+    pageEls.forEach(el => io.observe(el));
+  }
+
+  /* ─── Boot ─── */
+
+  init().catch(err => {
+    statusMsg.textContent = '오류: ' + err.message;
+    document.getElementById('prog').style.background = '#c0392b';
+  });
+</script>
+</body>
+</html>
